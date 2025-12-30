@@ -38,6 +38,8 @@ export interface Database {
           id: string;
           user_id: string;
           work_date: string;
+          start_time: string | null;
+          end_time: string | null;
           normal_hours: number;
           late_hours: number;
           night_hours: number;
@@ -49,6 +51,8 @@ export interface Database {
           id?: string;
           user_id: string;
           work_date: string;
+          start_time?: string | null;
+          end_time?: string | null;
           normal_hours?: number;
           late_hours?: number;
           night_hours?: number;
@@ -60,6 +64,8 @@ export interface Database {
           id?: string;
           user_id?: string;
           work_date?: string;
+          start_time?: string | null;
+          end_time?: string | null;
           normal_hours?: number;
           late_hours?: number;
           night_hours?: number;

@@ -10,6 +10,63 @@ export interface MonthlyStats {
   isOverLimit: boolean;
 }
 
+export interface CategorizedHours {
+  normalHours: number;
+  lateHours: number;
+  nightHours: number;
+}
+
+const LATE_SHIFT_START = 18.5;
+const NIGHT_SHIFT_START = 20;
+const HOURS_PER_DAY = 24;
+
+export const categorizeHoursByTime = (startTime: string, endTime: string): CategorizedHours => {
+  const parseTimeToHours = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours + minutes / 60;
+  };
+
+  let start = parseTimeToHours(startTime);
+  let end = parseTimeToHours(endTime);
+
+  if (end < start) {
+    end += HOURS_PER_DAY;
+  }
+
+  const totalHours = end - start;
+  let normalHours = 0;
+  let lateHours = 0;
+  let nightHours = 0;
+
+  if (end <= LATE_SHIFT_START) {
+    normalHours = totalHours;
+  } else if (start >= NIGHT_SHIFT_START) {
+    nightHours = totalHours;
+  } else if (start >= LATE_SHIFT_START) {
+    if (end <= NIGHT_SHIFT_START) {
+      lateHours = totalHours;
+    } else {
+      lateHours = NIGHT_SHIFT_START - start;
+      nightHours = end - NIGHT_SHIFT_START;
+    }
+  } else {
+    normalHours = Math.max(0, LATE_SHIFT_START - start);
+
+    if (end <= NIGHT_SHIFT_START) {
+      lateHours = end - LATE_SHIFT_START;
+    } else {
+      lateHours = NIGHT_SHIFT_START - LATE_SHIFT_START;
+      nightHours = end - NIGHT_SHIFT_START;
+    }
+  }
+
+  return {
+    normalHours: Math.round(normalHours * 100) / 100,
+    lateHours: Math.round(lateHours * 100) / 100,
+    nightHours: Math.round(nightHours * 100) / 100,
+  };
+};
+
 export const calculateEarnings = (
   entry: WorkEntry,
   settings: UserSettings

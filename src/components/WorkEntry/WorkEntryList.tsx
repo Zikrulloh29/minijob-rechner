@@ -75,6 +75,11 @@ export const WorkEntryList = ({ entries, settings, selectedMonth, onDeleteEntry 
                       <Clock className="w-4 h-4" />
                       <span className="text-sm">{formatHours(totalHours)}</span>
                     </div>
+                    {entry.start_time && entry.end_time && (
+                      <div className="text-sm text-gray-500">
+                        {entry.start_time} - {entry.end_time}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { UserSettings } from '../../types/database';
-import { calculateEarnings, formatCurrency } from '../../utils/calculations';
+import { calculateEarnings, formatCurrency, categorizeHoursByTime } from '../../utils/calculations';
 
 interface WorkEntryFormProps {
   settings: UserSettings;
   onAddEntry: (entry: {
     work_date: string;
+    start_time: string | null;
+    end_time: string | null;
     normal_hours: number;
     late_hours: number;
     night_hours: number;
@@ -19,19 +21,20 @@ interface WorkEntryFormProps {
 export const WorkEntryForm = ({ settings, onAddEntry, selectedMonth }: WorkEntryFormProps) => {
   const today = new Date().toISOString().split('T')[0];
   const [workDate, setWorkDate] = useState(today);
-  const [normalHours, setNormalHours] = useState('');
-  const [lateHours, setLateHours] = useState('');
-  const [nightHours, setNightHours] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [additionalPayment, setAdditionalPayment] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const categorized = startTime && endTime ? categorizeHoursByTime(startTime, endTime) : { normalHours: 0, lateHours: 0, nightHours: 0 };
+
   const previewEarnings = calculateEarnings(
     {
-      normal_hours: parseFloat(normalHours) || 0,
-      late_hours: parseFloat(lateHours) || 0,
-      night_hours: parseFloat(nightHours) || 0,
+      normal_hours: categorized.normalHours,
+      late_hours: categorized.lateHours,
+      night_hours: categorized.nightHours,
       additional_payment: parseFloat(additionalPayment) || 0,
     } as any,
     settings
@@ -40,13 +43,21 @@ export const WorkEntryForm = ({ settings, onAddEntry, selectedMonth }: WorkEntry
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!startTime || !endTime) {
+      setError('Bitte geben Sie Start- und Endzeit ein.');
+      return;
+    }
+
     setLoading(true);
 
     const result = await onAddEntry({
       work_date: workDate,
-      normal_hours: parseFloat(normalHours) || 0,
-      late_hours: parseFloat(lateHours) || 0,
-      night_hours: parseFloat(nightHours) || 0,
+      start_time: startTime,
+      end_time: endTime,
+      normal_hours: categorized.normalHours,
+      late_hours: categorized.lateHours,
+      night_hours: categorized.nightHours,
       additional_payment: parseFloat(additionalPayment) || 0,
       notes: notes.trim(),
     });
@@ -54,9 +65,8 @@ export const WorkEntryForm = ({ settings, onAddEntry, selectedMonth }: WorkEntry
     if (result.error) {
       setError('Fehler beim Hinzufügen des Eintrags.');
     } else {
-      setNormalHours('');
-      setLateHours('');
-      setNightHours('');
+      setStartTime('');
+      setEndTime('');
       setAdditionalPayment('');
       setNotes('');
       setWorkDate(today);
@@ -84,62 +94,57 @@ export const WorkEntryForm = ({ settings, onAddEntry, selectedMonth }: WorkEntry
           />
         </div>
 
-        <div>
-          <label htmlFor="normalHours" className="block text-sm font-medium text-gray-700 mb-1">
-            Normale Stunden
-          </label>
-          <input
-            id="normalHours"
-            type="number"
-            step="0.01"
-            min="0"
-            value={normalHours}
-            onChange={(e) => setNormalHours(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Stundenlohn: {formatCurrency(settings.hourly_wage)}
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-1">
+              Startzeit
+            </label>
+            <input
+              id="startTime"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
+              Endzeit
+            </label>
+            <input
+              id="endTime"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="lateHours" className="block text-sm font-medium text-gray-700 mb-1">
-            Spätstunden
-          </label>
-          <input
-            id="lateHours"
-            type="number"
-            step="0.01"
-            min="0"
-            value={lateHours}
-            onChange={(e) => setLateHours(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            +{settings.late_shift_percentage}% Zuschlag = {formatCurrency(settings.hourly_wage * (settings.late_shift_percentage / 100))}/Std.
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="nightHours" className="block text-sm font-medium text-gray-700 mb-1">
-            Nachtstunden
-          </label>
-          <input
-            id="nightHours"
-            type="number"
-            step="0.01"
-            min="0"
-            value={nightHours}
-            onChange={(e) => setNightHours(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            +{settings.night_shift_percentage}% Zuschlag = {formatCurrency(settings.hourly_wage * (settings.night_shift_percentage / 100))}/Std.
-          </p>
-        </div>
+        {startTime && endTime && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <p className="text-gray-600">Normal</p>
+                <p className="font-semibold text-gray-900">{categorized.normalHours.toFixed(2)} Std.</p>
+                <p className="text-xs text-gray-500">{formatCurrency(categorized.normalHours * settings.hourly_wage)}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Spät (18:30+)</p>
+                <p className="font-semibold text-gray-900">{categorized.lateHours.toFixed(2)} Std.</p>
+                <p className="text-xs text-gray-500">+{settings.late_shift_percentage}%</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Nacht (20:00+)</p>
+                <p className="font-semibold text-gray-900">{categorized.nightHours.toFixed(2)} Std.</p>
+                <p className="text-xs text-gray-500">+{settings.night_shift_percentage}%</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <label htmlFor="additionalPayment" className="block text-sm font-medium text-gray-700 mb-1">
